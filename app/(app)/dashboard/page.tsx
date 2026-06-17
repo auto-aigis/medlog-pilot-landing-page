@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/_components/AuthProvider';
+import { useAuth } from '@/app/_components/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { dashboardApi, onboardingApi } from '@/_lib/api';
-import { TrendMetric, ReadinessScore, ExamChecklist } from '@/_lib/types';
+import { dashboardApi, onboardingApi } from '@/app/_lib/api';
+import { TrendMetric, ReadinessScore, ExamChecklist } from '@/app/_lib/types';
 import VitalsForm from './_components/VitalsForm';
 import TrendsView from './_components/TrendsView';
 import ReadinessCard from './_components/ReadinessCard';

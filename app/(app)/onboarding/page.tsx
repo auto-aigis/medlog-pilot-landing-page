@@ -1,226 +1,184 @@
 "use client";
 import { useState } from 'react';
+import { useAuth } from '@/app/_components/AuthProvider';
 import { useRouter } from 'next/navigation';
+import { onboardingApi } from '@/app/_lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { onboardingApi } from '@/_lib/api';
-
-type Step = 1 | 2 | 3;
 
 export default function OnboardingPage() {
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [step, setStep] = useState<Step>(1);
+  const [formData, setFormData] = useState({
+    health_conditions: '',
+    medications: '',
+    surgeries: '',
+    allergies: '',
+    family_history: '',
+    exam_date: '',
+    goals: '',
+  });
+  const [step, setStep] = useState(1);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [pilot, setPilot] = useState({
-    airline_operator: '',
-    license_type: 'DGCA',
-    years_flying: '',
-    aircraft_type: '',
-  });
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
 
-  const [dates, setDates] = useState({
-    certificate_expiry_date: '',
-    next_exam_date: '',
-  });
+  if (!user) {
+    return null;
+  }
 
-  const [baseline, setBaseline] = useState({
-    resting_bp_systolic: '',
-    resting_bp_diastolic: '',
-    resting_hr: '',
-    bmi: '',
-    sleep_hours_per_night: '',
-  });
-
-  const handleNext = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
-    if (step === 3) {
-      setLoading(true);
-      try {
-        await onboardingApi.save({
-          ...pilot,
-          years_flying: parseInt(pilot.years_flying),
-          ...dates,
-          resting_bp_systolic: parseInt(baseline.resting_bp_systolic),
-          resting_bp_diastolic: parseInt(baseline.resting_bp_diastolic),
-          resting_hr: parseInt(baseline.resting_hr),
-          bmi: parseFloat(baseline.bmi),
-          sleep_hours_per_night: parseFloat(baseline.sleep_hours_per_night),
-        });
-        router.push('/dashboard');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to save onboarding');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setStep((step + 1) as Step);
+    setSubmitting(true);
+
+    try {
+      const payload: any = {};
+      if (formData.health_conditions) payload.health_conditions = formData.health_conditions;
+      if (formData.medications) payload.medications = formData.medications;
+      if (formData.surgeries) payload.surgeries = formData.surgeries;
+      if (formData.allergies) payload.allergies = formData.allergies;
+      if (formData.family_history) payload.family_history = formData.family_history;
+      if (formData.exam_date) payload.exam_date = formData.exam_date;
+      if (formData.goals) payload.goals = formData.goals;
+
+      await onboardingApi.complete(payload);
+      router.push('/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to complete onboarding');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="mx-auto max-w-2xl p-6 py-12">
-      <Card>
-        <CardHeader>
-          <CardTitle>Complete Your Profile</CardTitle>
-          <CardDescription>Step {step} of 3</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert className="mb-4 border-red-200 bg-red-50">
-              <AlertDescription className="text-red-800">{error}</AlertDescription>
-            </Alert>
-          )}
+    <div className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-2xl p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Complete Your Profile</CardTitle>
+            <CardDescription>Step {step} of 2 - Health Information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <Alert className="mb-4 border-red-200 bg-red-50">
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
+              </Alert>
+            )}
 
-          {step === 1 && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="airline">Airline / Operator</Label>
-                <Input
-                  id="airline"
-                  value={pilot.airline_operator}
-                  onChange={(e) => setPilot({ ...pilot, airline_operator: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="license">License Type</Label>
-                <Select value={pilot.license_type} onValueChange={(v: any) => setPilot({ ...pilot, license_type: v })}>
-                  <SelectTrigger id="license" className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DGCA">DGCA (India)</SelectItem>
-                    <SelectItem value="FAA">FAA (USA)</SelectItem>
-                    <SelectItem value="EASA">EASA (Europe)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="years">Years Flying</Label>
-                <Input
-                  id="years"
-                  type="number"
-                  value={pilot.years_flying}
-                  onChange={(e) => setPilot({ ...pilot, years_flying: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="aircraft">Aircraft Type</Label>
-                <Input
-                  id="aircraft"
-                  value={pilot.aircraft_type}
-                  onChange={(e) => setPilot({ ...pilot, aircraft_type: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {step === 1 ? (
+                <>
+                  <div>
+                    <Label htmlFor="conditions">Health Conditions (optional)</Label>
+                    <Textarea
+                      id="conditions"
+                      placeholder="e.g., hypertension, diabetes"
+                      value={formData.health_conditions}
+                      onChange={(e) => setFormData({ ...formData, health_conditions: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
 
-          {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="cert_expiry">Certificate Expiry Date</Label>
-                <Input
-                  id="cert_expiry"
-                  type="date"
-                  value={dates.certificate_expiry_date}
-                  onChange={(e) => setDates({ ...dates, certificate_expiry_date: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="next_exam">Next Medical Exam Date</Label>
-                <Input
-                  id="next_exam"
-                  type="date"
-                  value={dates.next_exam_date}
-                  onChange={(e) => setDates({ ...dates, next_exam_date: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          )}
+                  <div>
+                    <Label htmlFor="meds">Current Medications (optional)</Label>
+                    <Textarea
+                      id="meds"
+                      placeholder="e.g., Lisinopril 10mg daily"
+                      value={formData.medications}
+                      onChange={(e) => setFormData({ ...formData, medications: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
 
-          {step === 3 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="bp_sys">BP Systolic</Label>
-                  <Input
-                    id="bp_sys"
-                    type="number"
-                    value={baseline.resting_bp_systolic}
-                    onChange={(e) => setBaseline({ ...baseline, resting_bp_systolic: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="bp_dia">BP Diastolic</Label>
-                  <Input
-                    id="bp_dia"
-                    type="number"
-                    value={baseline.resting_bp_diastolic}
-                    onChange={(e) => setBaseline({ ...baseline, resting_bp_diastolic: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="hr">Resting HR (bpm)</Label>
-                <Input
-                  id="hr"
-                  type="number"
-                  value={baseline.resting_hr}
-                  onChange={(e) => setBaseline({ ...baseline, resting_hr: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="bmi">BMI</Label>
-                <Input
-                  id="bmi"
-                  type="number"
-                  step="0.1"
-                  value={baseline.bmi}
-                  onChange={(e) => setBaseline({ ...baseline, bmi: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="sleep">Sleep Hours per Night</Label>
-                <Input
-                  id="sleep"
-                  type="number"
-                  step="0.5"
-                  value={baseline.sleep_hours_per_night}
-                  onChange={(e) => setBaseline({ ...baseline, sleep_hours_per_night: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          )}
+                  <div>
+                    <Label htmlFor="surgeries">Past Surgeries (optional)</Label>
+                    <Textarea
+                      id="surgeries"
+                      placeholder="e.g., Appendectomy 2015"
+                      value={formData.surgeries}
+                      onChange={(e) => setFormData({ ...formData, surgeries: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
 
-          <div className="flex justify-between mt-6">
-            <Button
-              onClick={() => setStep((step - 1) as Step)}
-              variant="outline"
-              disabled={step === 1 || loading}
-            >
-              Back
-            </Button>
-            <Button onClick={handleNext} disabled={loading}>
-              {loading ? 'Saving...' : step === 3 ? 'Complete' : 'Next'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => router.push('/dashboard')} className="w-full">
+                      Skip
+                    </Button>
+                    <Button type="button" onClick={() => setStep(2)} className="w-full">
+                      Next
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <Label htmlFor="allergies">Allergies (optional)</Label>
+                    <Textarea
+                      id="allergies"
+                      placeholder="e.g., Penicillin allergy"
+                      value={formData.allergies}
+                      onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="family_history">Family History (optional)</Label>
+                    <Textarea
+                      id="family_history"
+                      placeholder="e.g., Father had heart disease"
+                      value={formData.family_history}
+                      onChange={(e) => setFormData({ ...formData, family_history: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="exam_date">Expected Exam Date (optional)</Label>
+                    <Input
+                      id="exam_date"
+                      type="date"
+                      value={formData.exam_date}
+                      onChange={(e) => setFormData({ ...formData, exam_date: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="goals">Health Goals (optional)</Label>
+                    <Textarea
+                      id="goals"
+                      placeholder="e.g., Lower blood pressure, improve fitness"
+                      value={formData.goals}
+                      onChange={(e) => setFormData({ ...formData, goals: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => setStep(1)} className="w-full">
+                      Back
+                    </Button>
+                    <Button type="submit" disabled={submitting} className="w-full">
+                      {submitting ? 'Completing...' : 'Complete Onboarding'}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

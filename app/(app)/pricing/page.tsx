@@ -1,125 +1,142 @@
 "use client";
-import { useState } from 'react';
+import { useAuth } from '@/app/_components/AuthProvider';
+import { useRouter } from 'next/navigation';
+import { paymentsApi } from '@/app/_lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Check } from 'lucide-react';
-import { paymentApi } from '@/_lib/api';
-import { useAuth } from '@/_components/AuthProvider';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
-const tiers = [
+interface PricingTier {
+  name: string;
+  price: number;
+  description: string;
+  features: string[];
+  id: string;
+}
+
+const TIERS: PricingTier[] = [
   {
+    id: 'free',
     name: 'Free',
-    price: '$0',
-    period: '',
-    description: 'Get started with basic logging',
+    price: 0,
+    description: 'Get started with basic health tracking',
     features: [
-      '7-day log history',
-      'BP and HR sparklines',
-      'Basic status indicators',
-      'No Medical Readiness Score',
+      'Daily vital logging',
+      'Health trends visualization',
+      'Basic health insights',
+      'Email support',
     ],
   },
   {
+    id: 'pro',
     name: 'Pro',
-    price: '$12',
-    period: '/month',
-    description: 'Full professional pilot tracking',
+    price: 29,
+    description: 'For serious exam preparation',
     features: [
-      '90-day log history',
-      'All 6 health metrics',
-      'Medical Readiness Score',
-      'Exam countdown & alerts',
-      'Weekly insights',
-      'All regulatory standards',
+      'Everything in Free',
+      'Exam readiness scoring',
+      'AI-powered recommendations',
+      'Personalized prep checklist',
+      'Priority support',
+      'Export health reports',
     ],
-    featured: true,
   },
   {
-    name: 'Plus',
-    price: '$22',
-    period: '/month',
-    description: 'Premium with evidence export',
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 99,
+    description: 'For institutions and organizations',
     features: [
       'Everything in Pro',
-      '365-day log history',
-      'PDF evidence packet export',
-      'Priority support',
-      'Early access to features',
+      'Multi-user management',
+      'Custom integrations',
+      'Dedicated account manager',
+      'Advanced analytics',
+      'SLA support',
     ],
   },
 ];
 
 export default function PricingPage() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState<string | null>(null);
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [error, setError] = React.useState('');
+  const [processing, setProcessing] = React.useState(false);
 
-  const handleUpgrade = async (tier: 'pro' | 'plus') => {
-    setLoading(tier);
+  const handleUpgrade = async (tierId: string) => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    if (user.tier === tierId) {
+      return;
+    }
+
+    setError('');
+    setProcessing(true);
+
     try {
-      const { checkout_url } = await paymentApi.createCheckout(tier);
-      window.location.href = checkout_url;
+      const response = await paymentsApi.getPaymentLink({ tier: tierId });
+      window.location.href = response.payment_url;
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Upgrade failed');
-    } finally {
-      setLoading(null);
+      setError(err instanceof Error ? err.message : 'Failed to initiate payment');
+      setProcessing(false);
     }
   };
 
-  return (
-    <div className="mx-auto max-w-7xl p-6 md:p-12">
-      <div className="mb-12 text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h1>
-        <p className="text-lg text-gray-600">Choose the plan that fits your pilot medical readiness needs</p>
-      </div>
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
 
-      <div className="grid md:grid-cols-3 gap-8 mb-12">
-        {tiers.map((tier) => (
-          <Card
-            key={tier.name}
-            className={`flex flex-col ${tier.featured ? 'ring-2 ring-blue-500 md:scale-105' : ''}`}
-          >
-            {tier.featured && (
-              <div className="px-4 py-2 bg-blue-50 text-blue-700 text-sm font-semibold text-center">
-                MOST POPULAR
-              </div>
-            )}
-            <CardHeader>
-              <CardTitle className="text-2xl">{tier.name}</CardTitle>
-              <CardDescription>{tier.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <div className="mb-6">
-                <span className="text-3xl font-bold text-gray-900">{tier.price}</span>
-                {tier.period && <span className="text-gray-600">{tier.period}</span>}
-              </div>
-              <ul className="space-y-3 mb-6 flex-1">
-                {tier.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <Check size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              {tier.name === 'Free' ? (
-                user?.tier === 'free' && (
-                  <Badge variant="outline" className="w-full justify-center py-2">
-                    Your current plan
-                  </Badge>
-                )
-              ) : (
+  return (
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="mx-auto max-w-7xl">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h1>
+          <p className="text-xl text-gray-600">Choose the plan that works best for you</p>
+        </div>
+
+        {error && (
+          <Alert className="mb-6 border-red-200 bg-red-50 max-w-2xl mx-auto">
+            <AlertDescription className="text-red-800">{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {TIERS.map((tier) => (
+            <Card key={tier.id} className={user?.tier === tier.id ? 'ring-2 ring-blue-500' : ''}>
+              <CardHeader>
+                <CardTitle>{tier.name}</CardTitle>
+                <CardDescription>{tier.description}</CardDescription>
+                <div className="mt-4">
+                  <span className="text-3xl font-bold text-gray-900">${tier.price}</span>
+                  <span className="text-gray-600">/month</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="space-y-2">
+                  {tier.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
+                      <span className="text-green-600">✓</span>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
                 <Button
-                  onClick={() => handleUpgrade(tier.name.toLowerCase() as 'pro' | 'plus')}
-                  disabled={loading === tier.name.toLowerCase()}
+                  onClick={() => handleUpgrade(tier.id)}
+                  disabled={processing || user?.tier === tier.id}
                   className="w-full"
                 >
-                  {loading === tier.name.toLowerCase() ? 'Processing...' : `Upgrade to ${tier.name}`}
+                  {user?.tier === tier.id ? 'Current Plan' : processing ? 'Processing...' : 'Choose Plan'}
                 </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
+
+import React from 'react';
