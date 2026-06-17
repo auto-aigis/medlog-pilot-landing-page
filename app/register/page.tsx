@@ -1,33 +1,50 @@
 "use client";
 import { useState } from 'react';
+import { useAuth } from '@/app/_components/AuthProvider';
 import { useRouter } from 'next/navigation';
+import { authApi } from '@/app/_lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { authApi } from '@/_lib/api';
-import Link from 'next/link';
 
 export default function RegisterPage() {
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    display_name: '',
+  });
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
+
+  if (user) {
+    router.push('/dashboard');
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setSubmitting(true);
+
     try {
-      await authApi.register(email, password, displayName);
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      await authApi.register({
+        email: formData.email,
+        password: formData.password,
+        display_name: formData.display_name || undefined,
+      });
+      router.push('/verify-email');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : 'Failed to register');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -35,8 +52,8 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Sign Up</CardTitle>
-          <CardDescription>Create an account to track your pilot health metrics</CardDescription>
+          <CardTitle>Create Account</CardTitle>
+          <CardDescription>Sign up to get started</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -44,47 +61,59 @@ export default function RegisterPage() {
               <AlertDescription className="text-red-800">{error}</AlertDescription>
             </Alert>
           )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="display_name">Display Name (optional)</Label>
               <Input
-                id="name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                id="display_name"
+                type="text"
+                placeholder="Your Name"
+                value={formData.display_name}
+                onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
                 className="mt-1"
               />
             </div>
+
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
                 className="mt-1"
               />
             </div>
+
             <div>
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
                 className="mt-1"
               />
             </div>
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Creating account...' : 'Sign Up'}
+
+            <Button type="submit" disabled={submitting} className="w-full">
+              {submitting ? 'Creating account...' : 'Sign up'}
             </Button>
           </form>
+
           <div className="mt-4 text-center text-sm">
             <span className="text-gray-600">Already have an account? </span>
-            <Link href="/login" className="text-blue-600 hover:underline">
+            <button
+              onClick={() => router.push('/login')}
+              className="font-medium text-blue-600 hover:text-blue-700"
+            >
               Sign in
-            </Link>
+            </button>
           </div>
         </CardContent>
       </Card>
