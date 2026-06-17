@@ -1,8 +1,7 @@
 "use client";
 import { useAuth } from '@/app/_components/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { paymentsApi } from '@/app/_lib/api';
-import { Button } from '@/components/ui/button';
+import { paymentApi } from '@/app/_lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -78,7 +77,7 @@ export default function PricingPage() {
 
     try {
       const response = await paymentsApi.getPaymentLink({ tier: tierId });
-      window.location.href = response.payment_url;
+       const response = await paymentApi.getPaymentLink({ tier: tierId });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initiate payment');
       setProcessing(false);

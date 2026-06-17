@@ -69,7 +69,7 @@ export default function DashboardPage() {
     if (onboardingComplete) {
       refreshDashboard();
     }
-  }, [onboardingComplete]);
+   }, [onboardingComplete, refreshDashboard]);
 
   if (authLoading || checkingOnboarding || !onboardingComplete) {
     return <div className="min-h-screen bg-gray-50" />;
